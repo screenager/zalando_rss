@@ -374,6 +374,13 @@ function toFeedItems(items) {
           }
         }
       });
+      customElements.push({
+        image: {
+          _attr: {
+            url: item.image
+          }
+        }
+      });
     }
 
     return {
