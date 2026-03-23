@@ -1,0 +1,17 @@
+{
+  "name": "zalando_rss",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generate an RSS feed from a Zalando filtered search page.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-rss.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "rss": "^1.2.2"
+  }
+}

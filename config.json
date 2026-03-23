@@ -1,0 +1,8 @@
+{
+  "SEARCH_URL": "https://www.zalando.be/heren/farah-vintage.globe.jack-jones.next.petrol-industries.superdry.tom-tailor__maat-M.S/?assortment_area=standaard&your_brands=true&order=activation_date",
+  "FEED_TITLE": "Zalando Men (M/S) Newest",
+  "FEED_DESCRIPTION": "Newest items from Zalando filtered search",
+  "OUTPUT": "public/zalando.xml",
+  "MAX_ITEMS": 50,
+  "MIN_FETCH_INTERVAL_MIN": 30
+}
