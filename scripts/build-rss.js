@@ -42,6 +42,8 @@ const MAX_ITEMS = Number.parseInt(
   process.env.MAX_ITEMS || config.MAX_ITEMS || "50",
   10
 );
+const PUBLIC_BASE_URL =
+  process.env.PUBLIC_BASE_URL || config.PUBLIC_BASE_URL || "";
 const USER_AGENT =
   process.env.USER_AGENT ||
   config.USER_AGENT ||
@@ -50,10 +52,19 @@ const MIN_FETCH_INTERVAL_MIN = Number.parseInt(
   process.env.MIN_FETCH_INTERVAL_MIN || config.MIN_FETCH_INTERVAL_MIN || "30",
   10
 );
+const IMAGE_DOWNLOAD =
+  String(process.env.IMAGE_DOWNLOAD || config.IMAGE_DOWNLOAD || "true").toLowerCase() !==
+  "false";
+const IMAGE_CACHE_DAYS = Number.parseInt(
+  process.env.IMAGE_CACHE_DAYS || config.IMAGE_CACHE_DAYS || "7",
+  10
+);
 
 const cacheDir = path.join(process.cwd(), ".cache");
 const cacheHtmlPath = path.join(cacheDir, "last.html");
 const cacheMetaPath = path.join(cacheDir, "meta.json");
+const imagesMetaPath = path.join(cacheDir, "images.json");
+const imagesDir = path.join(process.cwd(), "public", "images");
 
 async function readJson(filePath) {
   try {
@@ -85,6 +96,32 @@ function textClean(value) {
 
 function hashContent(content) {
   return crypto.createHash("sha256").update(content).digest("hex");
+}
+
+function resolvePublicUrl(relativePath) {
+  if (!PUBLIC_BASE_URL) return relativePath;
+  return `${PUBLIC_BASE_URL.replace(/\/$/, "")}/${relativePath.replace(/^\//, "")}`;
+}
+
+function extFromContentType(contentType) {
+  if (!contentType) return "jpg";
+  if (contentType.includes("image/png")) return "png";
+  if (contentType.includes("image/webp")) return "webp";
+  if (contentType.includes("image/avif")) return "avif";
+  if (contentType.includes("image/jpeg")) return "jpg";
+  return "jpg";
+}
+
+function extFromFilename(filename) {
+  const match = filename?.match(/\.([a-z0-9]+)$/i);
+  return match ? match[1].toLowerCase() : "jpg";
+}
+
+function mimeFromExt(ext) {
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "avif") return "image/avif";
+  return "image/jpeg";
 }
 
 async function fetchHtml(url) {
@@ -130,6 +167,79 @@ async function fetchHtml(url) {
   });
 
   return html;
+}
+
+async function localizeImages(items) {
+  if (!IMAGE_DOWNLOAD) return items;
+
+  const meta = (await readJson(imagesMetaPath)) || { images: {} };
+  const now = Date.now();
+
+  await fs.mkdir(imagesDir, { recursive: true });
+
+  for (const item of items) {
+    if (!item.image) continue;
+
+    const key = hashContent(item.image);
+    const existing = meta.images[key];
+
+    if (existing) {
+      existing.lastSeen = now;
+      const filePath = path.join(imagesDir, existing.filename);
+      try {
+        await fs.access(filePath);
+        const ext = extFromFilename(existing.filename);
+        item.image = resolvePublicUrl(`images/${existing.filename}`);
+        item.imageType = mimeFromExt(ext);
+        continue;
+      } catch {
+        // fall through to re-download
+      }
+    }
+
+    try {
+      const res = await fetch(item.image, {
+        headers: {
+          "user-agent": USER_AGENT,
+          "accept":
+            "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+          "referer": SEARCH_URL
+        }
+      });
+      if (!res.ok) continue;
+
+      const contentType = res.headers.get("content-type") || "";
+      const ext = extFromContentType(contentType);
+      const filename = `${key}.${ext}`;
+      const filePath = path.join(imagesDir, filename);
+
+      const buffer = Buffer.from(await res.arrayBuffer());
+      await fs.writeFile(filePath, buffer);
+
+      meta.images[key] = { filename, url: item.image, lastSeen: now };
+      item.image = resolvePublicUrl(`images/${filename}`);
+      item.imageType = mimeFromExt(ext);
+    } catch {
+      // ignore image failures
+    }
+  }
+
+  if (IMAGE_CACHE_DAYS > 0) {
+    const maxAgeMs = IMAGE_CACHE_DAYS * 24 * 60 * 60 * 1000;
+    for (const [key, info] of Object.entries(meta.images)) {
+      if (!info?.lastSeen || now - info.lastSeen < maxAgeMs) continue;
+      const filePath = path.join(imagesDir, info.filename);
+      try {
+        await fs.unlink(filePath);
+      } catch {
+        // ignore delete errors
+      }
+      delete meta.images[key];
+    }
+  }
+
+  await writeJson(imagesMetaPath, meta);
+  return items;
 }
 
 function collectFromJson(root, baseUrl) {
@@ -253,7 +363,7 @@ function toFeedItems(items) {
       enclosure: item.image
         ? {
             url: item.image,
-            type: "image/jpeg"
+            type: item.imageType || "image/jpeg"
           }
         : undefined
     };
@@ -278,6 +388,8 @@ async function main() {
   if (items.length === 0) {
     items = collectFromHtml(html, SEARCH_URL);
   }
+
+  items = await localizeImages(items);
 
   if (items.length === 0) {
     console.error("No items found. You may need to update selectors.");

@@ -4,3 +4,4 @@ node_modules
 public/*.xml
 public/*.rss
 public/*.atom
+public/images/

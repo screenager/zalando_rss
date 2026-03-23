@@ -28,10 +28,13 @@ You can configure via `config.json` (default) or environment variables. Env vars
   "FEED_TITLE": "Zalando Search Feed",
   "FEED_DESCRIPTION": "Newest items from Zalando filtered search",
   "FEED_LINK": "https://www.zalando.be/...",
+  "PUBLIC_BASE_URL": "https://<your-username>.github.io/<repo-name>",
   "OUTPUT": "public/zalando.xml",
   "MAX_ITEMS": 50,
   "USER_AGENT": "Mozilla/5.0 (compatible; zalando_rss/1.0)",
-  "MIN_FETCH_INTERVAL_MIN": 30
+  "MIN_FETCH_INTERVAL_MIN": 30,
+  "IMAGE_DOWNLOAD": true,
+  "IMAGE_CACHE_DAYS": 7
 }
 ```
 
@@ -42,10 +45,13 @@ Environment variables:
 - `FEED_TITLE` (default: `Zalando Search Feed`)
 - `FEED_DESCRIPTION` (default: `Newest items from Zalando filtered search`)
 - `FEED_LINK` (default: `SEARCH_URL`)
+- `PUBLIC_BASE_URL` (default: empty; set to your Pages base URL for image links)
 - `OUTPUT` (default: `public/zalando.xml`)
 - `MAX_ITEMS` (default: `50`)
 - `USER_AGENT` (default: `Mozilla/5.0 (compatible; zalando_rss/1.0)`)
 - `MIN_FETCH_INTERVAL_MIN` (default: `30`)
+- `IMAGE_DOWNLOAD` (default: `true`) — cache images locally to avoid hotlinking blocks
+- `IMAGE_CACHE_DAYS` (default: `7`) — delete images not seen in the last N days
 
 ## Notes
 
