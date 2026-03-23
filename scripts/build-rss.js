@@ -354,6 +354,28 @@ function toFeedItems(items) {
       : "";
     const description = `<p>${textDescription}</p>${imageHtml}`;
 
+    const customElements = [
+      { "content:encoded": { _cdata: description } }
+    ];
+    if (item.image) {
+      customElements.push({
+        "media:content": {
+          _attr: {
+            url: item.image,
+            type: item.imageType || "image/jpeg",
+            medium: "image"
+          }
+        }
+      });
+      customElements.push({
+        "media:thumbnail": {
+          _attr: {
+            url: item.image
+          }
+        }
+      });
+    }
+
     return {
       title: item.brand ? `${item.brand} — ${item.name}` : item.name,
       description,
@@ -365,7 +387,8 @@ function toFeedItems(items) {
             url: item.image,
             type: item.imageType || "image/jpeg"
           }
-        : undefined
+        : undefined,
+      custom_elements: customElements
     };
   });
 }
@@ -401,7 +424,11 @@ async function main() {
     feed_url: FEED_LINK,
     site_url: FEED_LINK,
     language: "nl",
-    ttl: MIN_FETCH_INTERVAL_MIN
+    ttl: MIN_FETCH_INTERVAL_MIN,
+    custom_namespaces: {
+      content: "http://purl.org/rss/1.0/modules/content/",
+      media: "http://search.yahoo.com/mrss/"
+    }
   });
 
   for (const item of toFeedItems(items)) {
